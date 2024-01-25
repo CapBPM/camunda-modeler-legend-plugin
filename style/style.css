@@ -1,0 +1,31 @@
+/* Custom styles go here */
+.legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 125px;
+  padding: 5px;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+}
+
+.legend-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.legend-item-color {
+  width: 15px;
+  height: 15px;
+}
+
+.legend-item-input {
+  width: 100px;
+  height: 15px;
+  outline: none;
+  border: 1px transparent solid;
+}
