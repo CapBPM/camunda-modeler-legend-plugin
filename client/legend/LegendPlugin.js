@@ -125,21 +125,32 @@ class PaletteColor {
 class LegendElement {
   element = null;
   listenets = new Map();
+  dragParams = null;
+  memory = null;
 
   constructor(colors, container) {
     this.colors = colors;
     this.container = container;
+    this.onMousemove();
   }
 
   create() {
     this.element = domify(this.getHtml());
+    if (this.memory) {
+      const { top, left } = this.memory;
+      this.element.style.top = `${top}px`;
+      this.element.style.left = `${left}px`;
+    }
     this.container.appendChild(this.element);
     this.addListeners();
+    this.draggable();
   }
 
   remove() {
     if (this.element) {
       this.removeListeners();
+      this.element.removeEventListener('mouseup', this.onMouseup);
+      this.element.removeEventListener('mousedown', this.onMousedown);
       this.container.removeChild(this.element);
     }
   }
@@ -148,6 +159,7 @@ class LegendElement {
     const colors = [...this.colors.values()];
     return `
     <div class="legend">
+      <div class="drag-bar"></div>
       ${colors.map((palleteColor) => {
       return `<div class="legend-item">
           <div class="legend-item-color" style="${palleteColor.style}"></div>
@@ -170,6 +182,32 @@ class LegendElement {
       this.element.querySelector(`#${key}`).removeEventListener('blur', this.listenets.get(key));
     });
     this.listenets.clear()
+  }
+
+  draggable() {
+    this.element.addEventListener('mousedown', this.onMousedown);
+    this.element.addEventListener('mouseup', this.onMouseup);
+  }
+
+  onMousemove() {
+    this.container.addEventListener('mousemove', (event) => {
+      if (this.dragParams && this.element) {
+        const { x, y } = event;
+        const { dx, dy } = this.dragParams;
+        this.element.style.left = `${x - dx}px`;
+        this.element.style.top = `${y - 28 - dy}px`;
+        this.memory = { left: x - dx, top: y - 28 - dy };
+      }
+    });
+  }
+
+  onMousedown = (event) => {
+    const { offsetX, offsetY } = event;
+    this.dragParams = { dx: offsetX, dy: offsetY };
+  }
+
+  onMouseup = () => {
+    this.dragParams = null;
   }
 }
 
