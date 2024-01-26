@@ -173,9 +173,10 @@ class LegendPlugin {
 
   updateLegend() {
     if (this.legendElement) {
-      this.legendElement.remove()
+      // this.legendElement.remove();
+      this.legendElement.update();
     }
-    this.legendElement.create();
+    // this.legendElement.create();
   }
 }
 
@@ -217,47 +218,104 @@ class LegendElement {
   element = null;
   listenets = new Map();
   dragParams = null;
-  memory = null;
 
   constructor(colors, container) {
     this.colors = colors;
     this.container = container;
-    this.onMousemove();
+    this.onContainerMousemove();
   }
 
-  create() {
-    this.element = domify__WEBPACK_IMPORTED_MODULE_2___default()(this.getHtml());
-    if (this.memory) {
-      const { top, left } = this.memory;
-      this.element.style.top = `${top}px`;
-      this.element.style.left = `${left}px`;
+  onContainerMousemove() {
+    this.container.addEventListener('mousemove', (event) => {
+      if (this.dragParams && this.element) {
+        const { x, y } = event;
+        const { dx, dy } = this.dragParams;
+        this.element.style.left = `${x - dx}px`;
+        this.element.style.top = `${y - 28 - dy}px`;
+      }
+    });
+  }
+
+  get dragBar() {
+    return this.element.querySelector('.drag-bar');
+  }
+
+  update() {
+    if (!this.element) {
+      this.createLegendPanel();
     }
+    this.removeLegendItems();
+    this.createLegendItems();
+  }
+
+  createLegendPanel() {
+    const panel = `<div class="legend">
+      <div class="drag-bar"></div>
+    </div>`
+    this.element = domify__WEBPACK_IMPORTED_MODULE_2___default()(panel);
     this.container.appendChild(this.element);
-    this.addListeners();
     this.draggable();
+  }
+
+  createLegendItems() {
+    const content = [...this.colors.values()].map((palleteColor) => {
+      return `<div class="legend-item">
+          <div class="legend-item-color" style="${palleteColor.style}"></div>
+          <input type="text" id="${palleteColor.id}" class="legend-item-input" value="${palleteColor.label}" />
+          <div class="legend-item-action">
+            <button class="arrow-btn up" title="Move Up"></button>
+            <button class="arrow-btn down" title="Move Down"></button>
+          </div>
+        </div>`;
+    }).join('\n');
+    this.element.appendChild(domify__WEBPACK_IMPORTED_MODULE_2___default()(content));
+    this.addListeners();
+    this.moveItems();
+  }
+
+  //
+
+  moveItems() {
+    this.element.querySelectorAll('.legend-item').forEach((item, i, items) => {
+      item.querySelector('button.up').addEventListener('click', (event) => {
+        const index = [...this.element.querySelectorAll('.legend-item').values()].indexOf(item);
+        if (index === 0) {
+          this.element.appendChild(item);
+        } else {
+          const swapEl = this.element.querySelectorAll('.legend-item').item(index - 1);
+          this.element.insertBefore(item, swapEl);
+        }
+      });
+
+      item.querySelector('button.down').addEventListener('click', (event) => {
+        const index = [...this.element.querySelectorAll('.legend-item').values()].indexOf(item);
+        if (index === items.length - 1) {
+          const firstEl = this.element.querySelectorAll('.legend-item').item(0);
+          this.element.insertBefore(item, firstEl);
+        } else {
+          const swapEl = this.element.querySelectorAll('.legend-item').item(index + 1);
+          this.element.insertBefore(swapEl, item);
+        }
+      });
+    });
+  }
+
+  //
+
+  removeLegendItems() {
+    this.removeListeners();
+    this.element.querySelectorAll('.legend-item').forEach((el) => {
+      this.element.removeChild(el);
+    });
   }
 
   remove() {
     if (this.element) {
       this.removeListeners();
       this.element.removeEventListener('mouseup', this.onMouseup);
-      this.element.removeEventListener('mousedown', this.onMousedown);
+      this.dragBar?.removeEventListener('mousedown', this.onMousedown);
       this.container.removeChild(this.element);
     }
-  }
-
-  getHtml() {
-    const colors = [...this.colors.values()];
-    return `
-    <div class="legend">
-      <div class="drag-bar"></div>
-      ${colors.map((palleteColor) => {
-      return `<div class="legend-item">
-          <div class="legend-item-color" style="${palleteColor.style}"></div>
-          <input type="text" id="${palleteColor.id}" class="legend-item-input" value="${palleteColor.label}" />
-        </div>`;
-    }).join('\n')}
-    </div>`
   }
 
   addListeners() {
@@ -276,20 +334,8 @@ class LegendElement {
   }
 
   draggable() {
-    this.element.addEventListener('mousedown', this.onMousedown);
+    this.dragBar?.addEventListener('mousedown', this.onMousedown);
     this.element.addEventListener('mouseup', this.onMouseup);
-  }
-
-  onMousemove() {
-    this.container.addEventListener('mousemove', (event) => {
-      if (this.dragParams && this.element) {
-        const { x, y } = event;
-        const { dx, dy } = this.dragParams;
-        this.element.style.left = `${x - dx}px`;
-        this.element.style.top = `${y - 28 - dy}px`;
-        this.memory = { left: x - dx, top: y - 28 - dy };
-      }
-    });
   }
 
   onMousedown = (event) => {
@@ -300,6 +346,19 @@ class LegendElement {
   onMouseup = () => {
     this.dragParams = null;
   }
+}
+
+class LegendContent {
+  constructor(colors) { }
+
+  createContent() {
+
+  }
+}
+
+class LegendItem {
+  constructor(color) { }
+
 }
 
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = ({

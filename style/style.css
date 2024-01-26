@@ -3,7 +3,7 @@
   position: absolute;
   bottom: 20px;
   right: 20px;
-  width: 125px;
+  width: 145px;
   padding: 5px;
   height: max-content;
   padding-top: 0;
@@ -57,4 +57,35 @@
   height: 15px;
   outline: none;
   border: 1px transparent solid;
+}
+
+.legend-item-action {
+  width: 20px;
+  height: 15px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.arrow-btn {
+  border: 0;
+  background-color: #fff;
+  width: 50%;
+  height: 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 10px 10px;
+  cursor: pointer;
+}
+
+.arrow-btn:hover {
+  background-color: #b9bcc6;
+}
+
+.arrow-btn.up {
+  background-image: url(../icons/arrow-up.svg);
+}
+
+.arrow-btn.down {
+  background-image: url(../icons/arrow-down.svg);
 }
