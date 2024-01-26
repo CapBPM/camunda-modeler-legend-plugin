@@ -1,10 +1,13 @@
 import domify from 'domify';
+import { LegendPluginStore } from './Store'
+import { EVENTS } from './constants';
 
 const PLUGIN_NAME = 'LegendPlugin';
 
 class LegendPlugin {
   colors = new Map();
   legendElement = null;
+  store = new LegendPluginStore();
 
   constructor(canvas, eventBus, elementRegistry) {
     this.elementRegistry = elementRegistry;
@@ -12,20 +15,44 @@ class LegendPlugin {
     this.eventBus = eventBus;
     this.legendElement = new LegendElement(this.colors, this.container);
     this.onElementChange();
-    this.onCavasInit();
+    this.onElementCreation();
+    this.onTabSave();
+    this.onModelerLoaded();
   }
 
-  onCavasInit() {
+  onElementCreation() {
     this.eventBus.on(['shape.added', 'connection.added'], (event) => {
-      console.log(event);
       this.addColorOnLegend(event.element);
     });
   }
 
   onElementChange() {
     this.eventBus.on(['element.changed', 'connection.changed'], (event) => {
-      console.log(event);
       this.addColorOnLegend(event.element);
+    });
+  }
+
+  onTabSave() {
+    this.eventBus.on(EVENTS.TAB_SAVE, ({ id }) => {
+      if (this.colors.size) {
+        const colorData = [...this.colors.entries()].reduce((data, [key, palleteColor]) => {
+          data[key] = palleteColor.model;
+          return data;
+        }, {});
+        this.store.save(id, colorData);
+      }
+    });
+  }
+
+  onModelerLoaded() {
+    this.eventBus.on(EVENTS.MODELER_LOADED, ({ id }) => {
+      const data = this.store.get(id);
+      if (data) {
+        Object.entries(data).forEach(([key, { fill, stroke, label, isElement }]) => {
+          this.colors.set(key, new PaletteColor(label, isElement, stroke, fill));
+        });
+        this.updateLegend();
+      }
     });
   }
 
@@ -79,9 +106,9 @@ class PaletteColor {
     return PaletteColor.createId(this.stroke, this.fill);
   }
 
-  // get cssClass() {
-  //   return this.isElement ? 'legend-item-element-color' : 'legend-item-line-color';
-  // }
+  get model() {
+    return { label: this.label, isElement: this.isElement, stroke: this.stroke, fill: this.fill };
+  }
 
   get style() {
     if (!this.isElement) return `background-color: ${this.stroke};`;

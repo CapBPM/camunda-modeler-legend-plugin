@@ -1,6 +1,79 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ "./client/legend/EditorEvents.js":
+/*!***************************************!*\
+  !*** ./client/legend/EditorEvents.js ***!
+  \***************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "default": () => (/* binding */ EditorEvents)
+/* harmony export */ });
+/* harmony import */ var camunda_modeler_plugin_helpers_react__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! camunda-modeler-plugin-helpers/react */ "./node_modules/camunda-modeler-plugin-helpers/react.js");
+/* harmony import */ var camunda_modeler_plugin_helpers_react__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(camunda_modeler_plugin_helpers_react__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./constants */ "./client/legend/constants.js");
+
+
+
+class EditorEvents extends camunda_modeler_plugin_helpers_react__WEBPACK_IMPORTED_MODULE_0__.PureComponent {
+  modelers = new Map();
+
+  constructor(props) {
+    super(props);
+    this.subscribe = props.subscribe;
+    this.onModelerCreate();
+    this.onTabSave();
+  }
+
+  onModelerCreate() {
+    this.subscribe('bpmn.modeler.created', (event) => {
+      const { tab, modeler } = event;
+      this.modelers.set(tab.id, new ModelerData(modeler, tab.id));
+    });
+  }
+
+  onTabSave() {
+    this.subscribe('tab.saved', ({ tab }) => {
+      const modelerData = this.modelers.get(tab.id);
+      if (modelerData) {
+        const { eventBus, definitionId } = modelerData;
+        eventBus.fire(_constants__WEBPACK_IMPORTED_MODULE_1__.EVENTS.TAB_SAVE, { id: definitionId });
+      }
+    });
+  }
+
+  render() {
+    return null;
+  }
+}
+
+class ModelerData {
+  constructor(modeler, tabId) {
+    this.tabId = tabId;
+    this.modeler = modeler;
+    this.eventBus = modeler.get('eventBus');
+    this.fireInitEvent();
+  }
+
+  get definitionId() {
+    return this.modeler._definitions.id;
+  }
+
+  fireInitEvent() {
+    const interval = setInterval(() => {
+      if (this.modeler._definitions) {
+        clearInterval(interval);
+        this.eventBus.fire(_constants__WEBPACK_IMPORTED_MODULE_1__.EVENTS.MODELER_LOADED, { id: this.definitionId });
+      }
+    }, 100);
+  }
+}
+
+/***/ }),
+
 /***/ "./client/legend/LegendPlugin.js":
 /*!***************************************!*\
   !*** ./client/legend/LegendPlugin.js ***!
@@ -12,8 +85,12 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "default": () => (__WEBPACK_DEFAULT_EXPORT__)
 /* harmony export */ });
-/* harmony import */ var domify__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! domify */ "./node_modules/domify/index.js");
-/* harmony import */ var domify__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(domify__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var domify__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! domify */ "./node_modules/domify/index.js");
+/* harmony import */ var domify__WEBPACK_IMPORTED_MODULE_2___default = /*#__PURE__*/__webpack_require__.n(domify__WEBPACK_IMPORTED_MODULE_2__);
+/* harmony import */ var _Store__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Store */ "./client/legend/Store.js");
+/* harmony import */ var _constants__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./constants */ "./client/legend/constants.js");
+
+
 
 
 const PLUGIN_NAME = 'LegendPlugin';
@@ -21,6 +98,7 @@ const PLUGIN_NAME = 'LegendPlugin';
 class LegendPlugin {
   colors = new Map();
   legendElement = null;
+  store = new _Store__WEBPACK_IMPORTED_MODULE_0__.LegendPluginStore();
 
   constructor(canvas, eventBus, elementRegistry) {
     this.elementRegistry = elementRegistry;
@@ -28,20 +106,44 @@ class LegendPlugin {
     this.eventBus = eventBus;
     this.legendElement = new LegendElement(this.colors, this.container);
     this.onElementChange();
-    this.onCavasInit();
+    this.onElementCreation();
+    this.onTabSave();
+    this.onModelerLoaded();
   }
 
-  onCavasInit() {
+  onElementCreation() {
     this.eventBus.on(['shape.added', 'connection.added'], (event) => {
-      console.log(event);
       this.addColorOnLegend(event.element);
     });
   }
 
   onElementChange() {
     this.eventBus.on(['element.changed', 'connection.changed'], (event) => {
-      console.log(event);
       this.addColorOnLegend(event.element);
+    });
+  }
+
+  onTabSave() {
+    this.eventBus.on(_constants__WEBPACK_IMPORTED_MODULE_1__.EVENTS.TAB_SAVE, ({ id }) => {
+      if (this.colors.size) {
+        const colorData = [...this.colors.entries()].reduce((data, [key, palleteColor]) => {
+          data[key] = palleteColor.model;
+          return data;
+        }, {});
+        this.store.save(id, colorData);
+      }
+    });
+  }
+
+  onModelerLoaded() {
+    this.eventBus.on(_constants__WEBPACK_IMPORTED_MODULE_1__.EVENTS.MODELER_LOADED, ({ id }) => {
+      const data = this.store.get(id);
+      if (data) {
+        Object.entries(data).forEach(([key, { fill, stroke, label, isElement }]) => {
+          this.colors.set(key, new PaletteColor(label, isElement, stroke, fill));
+        });
+        this.updateLegend();
+      }
     });
   }
 
@@ -95,9 +197,9 @@ class PaletteColor {
     return PaletteColor.createId(this.stroke, this.fill);
   }
 
-  // get cssClass() {
-  //   return this.isElement ? 'legend-item-element-color' : 'legend-item-line-color';
-  // }
+  get model() {
+    return { label: this.label, isElement: this.isElement, stroke: this.stroke, fill: this.fill };
+  }
 
   get style() {
     if (!this.isElement) return `background-color: ${this.stroke};`;
@@ -121,7 +223,7 @@ class LegendElement {
   }
 
   create() {
-    this.element = domify__WEBPACK_IMPORTED_MODULE_0___default()(this.getHtml());
+    this.element = domify__WEBPACK_IMPORTED_MODULE_2___default()(this.getHtml());
     this.container.appendChild(this.element);
     this.addListeners();
   }
@@ -167,6 +269,67 @@ class LegendElement {
   [PLUGIN_NAME]: ['type', LegendPlugin]
 });
 
+
+/***/ }),
+
+/***/ "./client/legend/Store.js":
+/*!********************************!*\
+  !*** ./client/legend/Store.js ***!
+  \********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "LegendPluginStore": () => (/* binding */ LegendPluginStore)
+/* harmony export */ });
+const STORE_KEY = 'LegendPluginStore';
+
+class LegendPluginStore {
+  store = {};
+
+  constructor() {
+    this.initStore();
+  }
+
+  initStore() {
+    this.store = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+  }
+
+  save(id, legendModel) {
+    this.store[id] = legendModel;
+    localStorage.setItem(STORE_KEY, JSON.stringify(this.store));
+  }
+
+  remove(id) {
+    const { [id]: remove, ...rest } = this.store;
+    this.store = rest;
+    localStorage.setItem(STORE_KEY, JSON.stringify(this.store));
+  }
+
+  get(id) {
+    return this.store[id];
+  }
+}
+
+
+/***/ }),
+
+/***/ "./client/legend/constants.js":
+/*!************************************!*\
+  !*** ./client/legend/constants.js ***!
+  \************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "EVENTS": () => (/* binding */ EVENTS)
+/* harmony export */ });
+const EVENTS = {
+  TAB_SAVE: 'legendPlugin.tabSave',
+  MODELER_LOADED: 'legendPlugin.modelerLoaded',
+}
 
 /***/ }),
 
@@ -445,6 +608,25 @@ function getPluginsDirectory() {
 
 /***/ }),
 
+/***/ "./node_modules/camunda-modeler-plugin-helpers/react.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/camunda-modeler-plugin-helpers/react.js ***!
+  \**************************************************************/
+/***/ ((module) => {
+
+if (!window.react) {
+  throw new Error('Not compatible with Camunda Modeler < 3.4');
+}
+
+/**
+ * React object used by Camunda Modeler. Use it to create UI extension.
+ *
+ * @type {import('react')}
+ */
+module.exports = window.react;
+
+/***/ }),
+
 /***/ "./node_modules/domify/index.js":
 /*!**************************************!*\
   !*** ./node_modules/domify/index.js ***!
@@ -613,11 +795,13 @@ var __webpack_exports__ = {};
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var camunda_modeler_plugin_helpers__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! camunda-modeler-plugin-helpers */ "./node_modules/camunda-modeler-plugin-helpers/index.js");
 /* harmony import */ var _legend_LegendPlugin__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./legend/LegendPlugin */ "./client/legend/LegendPlugin.js");
+/* harmony import */ var _legend_EditorEvents__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./legend/EditorEvents */ "./client/legend/EditorEvents.js");
 
 
 
 
 (0,camunda_modeler_plugin_helpers__WEBPACK_IMPORTED_MODULE_0__.registerBpmnJSPlugin)(_legend_LegendPlugin__WEBPACK_IMPORTED_MODULE_1__["default"]);
+(0,camunda_modeler_plugin_helpers__WEBPACK_IMPORTED_MODULE_0__.registerClientExtension)(_legend_EditorEvents__WEBPACK_IMPORTED_MODULE_2__["default"])
 
 })();
 
