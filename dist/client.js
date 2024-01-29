@@ -159,17 +159,14 @@ class LegendPlugin {
   }
 
   clearColors() {
-    const exist = [];
-    this.elementRegistry.forEach((element) => {
-      const { stroke, fill } = element.di;
-      if (stroke) {
-        const id = PaletteColor.createId(stroke, fill);
-        exist.push(id);
-        // this.addPaletteColor(element);
-      }
-    });
+    const existing = this.elementRegistry.getAll().reduce((ids, { di }) => {
+      const { stroke, fill } = di;
+      if (!stroke) return ids;
+      return ids.add(PaletteColor.createId(stroke, fill));
+    }, new Set());
+
     [...this.colors.keys()]
-      .filter((key) => !exist.includes(key))
+      .filter((key) => !existing.has(key))
       .forEach((key) => this.colors.delete(key));
     this.updateLegend();
   }
@@ -187,11 +184,7 @@ class LegendPlugin {
   }
 
   updateLegend() {
-    if (this.legendElement) {
-      // this.legendElement.remove();
-      this.legendElement.update();
-    }
-    // this.legendElement.create();
+    this.legendElement?.update();
   }
 
   isConnection(element) {
@@ -267,8 +260,6 @@ class LegendElement {
     }
     this.content.destroyContent();
     this.content.createContent();
-    // this.removeLegendItems();
-    // this.createLegendItems();
   }
 
   createLegendPanel() {
@@ -280,82 +271,14 @@ class LegendElement {
     this.draggable();
   }
 
-  // createLegendItems() {
-  //   const content = [...this.colors.values()].map((palleteColor) => {
-  //     return `<div class="legend-item">
-  //         <div class="legend-item-color" style="${palleteColor.style}"></div>
-  //         <input type="text" id="${palleteColor.id}" class="legend-item-input" value="${palleteColor.label}" />
-  //         <div class="legend-item-action">
-  //           <button class="arrow-btn up" title="Move Up"></button>
-  //           <button class="arrow-btn down" title="Move Down"></button>
-  //         </div>
-  //       </div>`;
-  //   }).join('\n');
-  //   this.element.appendChild(domify(content));
-  //   this.addListeners();
-  //   this.moveItems();
-  // }
-
-  //
-
-  // moveItems() {
-  //   this.element.querySelectorAll('.legend-item').forEach((item, i, items) => {
-  //     item.querySelector('button.up').addEventListener('click', (event) => {
-  //       const index = [...this.element.querySelectorAll('.legend-item').values()].indexOf(item);
-  //       if (index === 0) {
-  //         this.element.appendChild(item);
-  //       } else {
-  //         const swapEl = this.element.querySelectorAll('.legend-item').item(index - 1);
-  //         this.element.insertBefore(item, swapEl);
-  //       }
-  //     });
-
-  //     item.querySelector('button.down').addEventListener('click', (event) => {
-  //       const index = [...this.element.querySelectorAll('.legend-item').values()].indexOf(item);
-  //       if (index === items.length - 1) {
-  //         const firstEl = this.element.querySelectorAll('.legend-item').item(0);
-  //         this.element.insertBefore(item, firstEl);
-  //       } else {
-  //         const swapEl = this.element.querySelectorAll('.legend-item').item(index + 1);
-  //         this.element.insertBefore(swapEl, item);
-  //       }
-  //     });
-  //   });
-  // }
-
-  //
-
-  // removeLegendItems() {
-  //   this.removeListeners();
-  //   this.element.querySelectorAll('.legend-item').forEach((el) => {
-  //     this.element.removeChild(el);
-  //   });
-  // }
-
   remove() {
     if (this.element) {
-      // this.removeListeners();
       this.content?.destroyContent();
       this.element.removeEventListener('mouseup', this.onMouseup);
       this.dragBar?.removeEventListener('mousedown', this.onMousedown);
       this.container.removeChild(this.element);
     }
   }
-
-  // addListeners() {
-  //   [...this.colors.keys()].forEach((key) => {
-  //     const cb = ({ target }) => this.colors.get(key).label = target.value;
-  //     this.listenets.set(key, cb);
-  //     this.element.querySelector(`#${key}`).addEventListener('blur', cb);
-  //   });
-  // }
-
-  // removeListeners() {
-  //   [...this.listenets.keys()].forEach((key) => {
-  //     this.element.querySelector(`#${key}`).removeEventListener('blur', this.listenets.get(key));
-  //   });
-  //   this.listenets.clear()
-  // }
 
   draggable() {
     this.dragBar?.addEventListener('mousedown', this.onMousedown);
@@ -456,6 +379,10 @@ class LegendItem {
     this.addListeners();
   }
 
+  get menu() {
+    return this.element.querySelector('.legend-item-menu') || null;
+  }
+
   destoy() {
     this.onMove = undefined;
     this.onRemove = undefined;
@@ -467,31 +394,33 @@ class LegendItem {
     <div class="legend-item-color" style="${this.color.style}"></div>
     <input type="text" id="${this.color.id}" class="legend-item-input" value="${this.color.label}" />
     <div class="legend-item-action">
-      <button class="arrow-btn up" title="Move Up"></button>
-      <button class="arrow-btn down" title="Move Down"></button>
+      <button class="legend-item-menu-toggle"></button>
+    </div>
+
+    <div class="legend-item-menu" tabindex="0">
+      <button class="cap-btn cap-action-btn arrow-btn up" title="Move Up"></button>
+      <button class="cap-btn cap-action-btn arrow-btn down" title="Move Down"></button>
       <button class="cap-btn cap-action-btn text-red" data-action="remove" title="Remove">&times;</button>
     </div>
   </div>`
   }
-  // <button class="legend-item-menu-toggle"></button>
-
-
-  //   <div class="legend-item-menu">
-  //
-  // </div>
 
   addListeners() {
     this.element.querySelector(`#${this.color.id}`).addEventListener('blur', this.onBlur);
-    this.element.querySelector(`button.up`).addEventListener('click', this.onMoveUpBtnClick);
-    this.element.querySelector(`button.down`).addEventListener('click', this.onMoveDownBtnClick);
-    this.element.querySelector(`button[data-action="remove"]`).addEventListener('click', this.onRemoveBtnClick);
+    this.element.querySelector(`.arrow-btn.up`).addEventListener('mousedown', this.onMoveUpBtnClick);
+    this.element.querySelector(`.arrow-btn.down`).addEventListener('mousedown', this.onMoveDownBtnClick);
+    this.element.querySelector(`button[data-action="remove"]`).addEventListener('mousedown', this.onRemoveBtnClick);
+    this.element.querySelector(`.legend-item-menu-toggle`).addEventListener('click', this.openMenu);
+    this.menu.addEventListener('blur', this.closeMenu);
   }
 
   removeEventListeners() {
     this.element.querySelector(`#${this.color.id}`).removeEventListener('blur', this.onBlur);
-    this.element.querySelector(`button.up`).removeEventListener('click', this.onMoveUpBtnClick);
-    this.element.querySelector(`button.down`).removeEventListener('click', this.onMoveDownBtnClick);
-    this.element.querySelector(`button[data-action="remove"]`).removeEventListener('click', this.onRemoveBtnClick);
+    this.element.querySelector(`.arrow-btn.up`).removeEventListener('mousedown', this.onMoveUpBtnClick);
+    this.element.querySelector(`.arrow-btn.down`).removeEventListener('mousedown', this.onMoveDownBtnClick);
+    this.element.querySelector(`button[data-action="remove"]`).removeEventListener('mousedown', this.onRemoveBtnClick);
+    this.element.querySelector(`.legend-item-menu-toggle`).removeEventListener('click', this.openMenu);
+    this.menu.removeEventListener('blur', this.closeMenu);
   }
 
   onBlur = ({ target }) => {
@@ -500,14 +429,39 @@ class LegendItem {
 
   onMoveUpBtnClick = () => {
     this.onMove('up', this, this.element);
+    setTimeout(() => {
+      this.openMenu();
+    }, 0);
   }
 
   onMoveDownBtnClick = () => {
     this.onMove('down', this, this.element);
+    setTimeout(() => {
+      this.openMenu();
+    }, 0);
   }
 
-  onRemoveBtnClick = () => {
+  onRemoveBtnClick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     this.onRemove(this);
+  }
+
+  openMenu = () => {
+    if (this.menu) {
+      this.menu.style.width = 'max-content';
+      this.menu.style.height = 'max-content';
+      this.menu.style.border = '1px #000 solid';
+      this.menu.focus();
+    }
+  }
+
+  closeMenu = () => {
+    if (this.menu) {
+      this.menu.style.width = 0;
+      this.menu.style.height = 0;
+      this.menu.style.border = 0;
+    }
   }
 }
 

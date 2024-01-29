@@ -11,8 +11,6 @@
   display: flex;
   flex-direction: column;
   background-color: #fff;
-
-  /* border: 2px #505562 solid; */
 }
 
 .drag-bar {
@@ -43,6 +41,7 @@
 }
 
 .legend-item {
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -72,22 +71,34 @@
 .legend-item-menu-toggle {
   width: 13px;
   height: 13px;
-  background-image: url(../client/icons/menu.svg);
+  background-image: url(../icons/menu.svg);
   background-position: center;
   background-repeat: no-repeat;
   background-size: 10px 10px;
   border: 0;
 }
 
-.arrow-btn {
-  border: 0;
+.legend-item-menu {
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  position: absolute;
+  top: -100%;
+  right: -50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
   background-color: #fff;
-  width: 50%;
-  height: 100%;
+  border-radius: 100px;
+  border: 0;
+}
+
+.arrow-btn {
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 10px 10px;
-  cursor: pointer;
+  background-size: 1rem 1rem;
 }
 
 .arrow-btn:hover {
