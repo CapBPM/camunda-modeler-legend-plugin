@@ -78,6 +78,10 @@ class LegendPlugin {
       .filter((key) => !existing.has(key))
       .forEach((key) => this.colors.delete(key));
     this.updateLegend();
+
+    if (this.colors.size === 0) {
+      this.legendElement.remove();
+    }
   }
 
   addPaletteColor(element) {
@@ -165,7 +169,7 @@ class LegendElement {
   update() {
     if (!this.element) {
       this.createLegendPanel();
-      this.content = new LegendContent(this.colors, this.element);
+      this.content = new LegendContent(this.colors, this.element, this.removeColor);
     }
     this.content.destroyContent();
     this.content.createContent();
@@ -186,6 +190,14 @@ class LegendElement {
       this.element.removeEventListener('mouseup', this.onMouseup);
       this.dragBar?.removeEventListener('mousedown', this.onMousedown);
       this.container.removeChild(this.element);
+      this.element = null;
+    }
+  }
+
+  removeColor = (colorId) => {
+    this.colors.delete(colorId);
+    if (!this.colors.size) {
+      this.remove();
     }
   }
 
@@ -213,9 +225,10 @@ class LegendContent {
   */
   items = [];
 
-  constructor(colors, legend) {
+  constructor(colors, legend, removeColor) {
     this.colors = colors;
     this.parent = legend;
+    this.removeColor = removeColor;
   }
 
   createContent() {
@@ -237,7 +250,8 @@ class LegendContent {
     if (index > -1) {
       this.parent.removeChild(item.element);
       this.items.splice(index, 1);
-      this.colors.delete(item.color.id);
+      this.removeColor(item.color.id);
+      // this.colors.delete(item.color.id);
     }
   }
 

@@ -75,7 +75,14 @@
   background-position: center;
   background-repeat: no-repeat;
   background-size: 10px 10px;
+  border-radius: 50%;
+  background-color: #fff;
   border: 0;
+  cursor: pointer;
+}
+
+.legend-item-menu-toggle:hover {
+  background-color: #e3e3e3;
 }
 
 .legend-item-menu {
