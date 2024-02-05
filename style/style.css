@@ -6,11 +6,12 @@
   width: 145px;
   padding: 5px;
   height: max-content;
-  padding-top: 0;
   border-radius: 5px;
   display: flex;
   flex-direction: column;
   background-color: #fff;
+  box-shadow: rgba(0, 0, 0, 0.1) 0px 1px 3px 0px,
+    rgba(0, 0, 0, 0.06) 0px 1px 2px 0px;
 }
 
 .drag-bar {
@@ -19,6 +20,10 @@
   background-color: #fff;
   position: relative;
   cursor: move;
+  touch-action: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 .drag-bar:hover::before {
@@ -33,10 +38,10 @@
   height: 3px;
   border-radius: 10px;
   background-color: #e3e3e3;
-  top: 50%;
+  top: 0;
   left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0;
+  transform: translateX(-50%);
+  opacity: 0.3;
   transition: opacity 0.15s ease;
 }
 

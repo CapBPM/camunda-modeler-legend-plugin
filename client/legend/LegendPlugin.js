@@ -63,8 +63,8 @@ class LegendPlugin {
     const { stroke } = element.di;
     if (stroke) {
       this.addPaletteColor(element);
+      this.updateLegend();
     }
-    this.updateLegend();
   }
 
   clearColors() {
@@ -148,18 +148,7 @@ class LegendElement {
   constructor(colors, container) {
     this.colors = colors;
     this.container = container;
-    this.onContainerMousemove();
-  }
-
-  onContainerMousemove() {
-    this.container.addEventListener('mousemove', (event) => {
-      if (this.dragParams && this.element) {
-        const { x, y } = event;
-        const { dx, dy } = this.dragParams;
-        this.element.style.left = `${x - dx}px`;
-        this.element.style.top = `${y - 28 - dy}px`;
-      }
-    });
+    this.container.addEventListener('mousemove', this.onDrag);
   }
 
   get dragBar() {
@@ -187,9 +176,10 @@ class LegendElement {
   remove() {
     if (this.element) {
       this.content?.destroyContent();
-      this.element.removeEventListener('mouseup', this.onMouseup);
-      this.dragBar?.removeEventListener('mousedown', this.onMousedown);
+      this.element.removeEventListener('mouseup', this.endDrag);
+      this.dragBar?.removeEventListener('mousedown', this.startDrag);
       this.container.removeChild(this.element);
+      this.container.removeEventListener('mouseleave', this.endDrag);
       this.element = null;
     }
   }
@@ -202,16 +192,26 @@ class LegendElement {
   }
 
   draggable() {
-    this.dragBar?.addEventListener('mousedown', this.onMousedown);
-    this.element.addEventListener('mouseup', this.onMouseup);
+    this.dragBar?.addEventListener('mousedown', this.startDrag);
+    this.element.addEventListener('mouseup', this.endDrag);
+    this.container.addEventListener('mouseleave', this.endDrag);
   }
 
-  onMousedown = (event) => {
+  startDrag = (event) => {
     const { offsetX, offsetY } = event;
     this.dragParams = { dx: offsetX, dy: offsetY };
   }
 
-  onMouseup = () => {
+  onDrag = (event) => {
+    if (this.dragParams && this.element) {
+      const { x, y } = event;
+      const { dx, dy } = this.dragParams;
+      this.element.style.left = `${x - dx}px`;
+      this.element.style.top = `${y - 28 - dy}px`;
+    }
+  }
+
+  endDrag = () => {
     this.dragParams = null;
   }
 }
