@@ -149,6 +149,11 @@ class LegendElement {
     this.colors = colors;
     this.container = container;
     this.container.addEventListener('mousemove', this.onDrag);
+    document.addEventListener('keydown', ({ key }) => {
+      if (this.dragParams && key === 'Escape') {
+        this.endDrag();
+      }
+    });
   }
 
   get dragBar() {
